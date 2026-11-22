@@ -38,19 +38,22 @@ jobs:
 
       - name: Build firmware
         run: |
+          set -o pipefail
           chmod +x ./build.sh
-          ./build.sh
+          ./build.sh | tee build.log
 
-      - name: Locate generated firmware files
+      - name: Collect generated .fwsc firmware
         run: |
           mkdir -p out_fw
-          find . "$HOME/fw-AC79_AIoT_SDK" -type f \( -name "*.fwsc" -o -name "*.ufw" \) -print -exec cp {} out_fw/ \;
+          PKG_PATH=$(awk '/^package[[:space:]]+/ {print $2}' build.log | tail -n 1)
+          if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
+            cp "$PKG_PATH" out_fw/
+          fi
           if [ -z "$(ls -A out_fw)" ]; then
-            echo "No .fwsc or .ufw found. Printing tools/build.py to check output path:"
-            cat tools/build.py
-            exit 1
+            find "$HOME" /tmp -maxdepth 5 -type f -name "*.fwsc" -exec cp {} out_fw/ \; 2>/dev/null || true
           fi
           ls -lh out_fw/
+          test -n "$(ls -A out_fw)"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
