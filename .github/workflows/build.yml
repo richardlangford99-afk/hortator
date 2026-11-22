@@ -31,8 +31,8 @@ jobs:
       - name: Clone JieLi AC79 SDK
         run: |
           if [ ! -f "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot" ]; then
-            git clone --depth 1 https://gitee.com/JieLi-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK" || \
-            git clone --depth 1 https://github.com/jieli-tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK"
+            git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/JieLi-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK" || \
+            git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://github.com/jieli-tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK"
           fi
           test -f "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot"
 
