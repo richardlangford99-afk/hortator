@@ -118,7 +118,6 @@ static void euclid_apply_track(uint32_t k)
     }
 
     if (ahits > 0u && hits > 0u) {
-        uint32_t hit_idx = 0u;
         bucket = (int32_t)(hits - ahits);
         for (s = 0; s < steps; s++) {
             uint32_t pos = (s + rot) % steps;
@@ -128,7 +127,6 @@ static void euclid_apply_track(uint32_t k)
                     bucket -= (int32_t)hits;
                     acc[pos] = 1u;
                 }
-                hit_idx++;
             }
         }
     }
@@ -149,7 +147,27 @@ static void euclid_apply_track(uint32_t k)
     }
 
     trk[k].p[P_SLEN] = (int16_t)steps;
-    trk[k].p[P_SRC]  = 0;   /* play track's own step pattern */
+    trk[k].p[P_SRC]  = 0;
+}
+
+static void euclid_adjust(uint32_t k, int32_t d_steps, int32_t d_hits, int32_t d_rot, int32_t d_acc)
+{
+    euclid_trk_t *et;
+    if (k >= NTRK)
+        return;
+    euclid_sync_len(k);
+    et = &euclid.tr[k];
+    if (d_steps)
+        et->steps = (uint8_t)clamp((int32_t)et->steps + d_steps, 1, NSTEP);
+    if (d_hits)
+        et->hits = (uint8_t)clamp((int32_t)et->hits + d_hits, 0, (int32_t)et->steps);
+    if (d_rot) {
+        int32_t st = (int32_t)et->steps;
+        et->rotation = (uint8_t)(((int32_t)et->rotation + d_rot % st + st) % st);
+    }
+    if (d_acc)
+        et->accent_hits = (uint8_t)clamp((int32_t)et->accent_hits + d_acc, 0, (int32_t)et->hits);
+    euclid_apply_track(k);
 }
 
 static void euclid_fmt_summary(uint32_t k, char *b, uint32_t cap)
@@ -176,7 +194,6 @@ static void euclid_randomise_track_internal(uint32_t k)
     euclid_ensure_init();
     et = &euclid.tr[k];
 
-    /* Track 0 occasionally anchors on 16/32 while Tracks 1..7 favor odd/prime polymeters */
     if (k == 0u && (euclid_rng() % 100u) < 35u) {
         steps = (euclid_rng() & 1u) ? 16u : 32u;
     } else if ((euclid_rng() % 100u) < 80u) {
