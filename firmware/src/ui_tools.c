@@ -56,7 +56,11 @@ static tl_t tl;
 static int32_t accel(uint32_t role, int32_t s, int32_t range);   /* (ui_input.c) */
 static int cue_owns_keys(void);
 static void play_press(void);
-
+static void euclid_adjust(uint32_t k, int32_t d_steps, int32_t d_hits, int32_t d_rot, int32_t d_acc);
+static void euclid_sync_len(uint32_t k);
+static void euclid_fmt_summary(uint32_t k, char *b, uint32_t cap);
+static void euclid_randomise_selected(void);
+static void euclid_randomise_all(void);
 static uint32_t tl_len(const track_t *t) { return (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP); }
 /* m <- "w a-b" (steps from 1; one step: "w a"), m 24 B */
 static void tl_range(char *m, const char *w, uint32_t a, uint32_t b)
@@ -413,6 +417,10 @@ static void tools_panel(uint32_t pressed)
         bank_set((int32_t)ui.bank + 1);
     if ((pressed >> panel.btn[B_OCTDN]) & 1u)
         bank_set((int32_t)ui.bank - 1);
+    if ((pressed >> panel.btn[B_REC]) & 1u)
+        euclid_randomise_selected();
+    if ((pressed >> panel.btn[B_HOME]) & 1u)
+        euclid_randomise_all();
     if (tl.sel) {
         if ((s = panel_enc(EN_K1)) != 0) {
             v = clamp((int32_t)tl.s0 + accel(EN_K1, s, NSTEP), 0, NSTEP - 1);
@@ -426,6 +434,15 @@ static void tools_panel(uint32_t pressed)
             if (tl.s0 > tl.s1)
                 tl.s0 = tl.s1;
         }
+    } else {
+        int32_t d1 = panel_enc(EN_K1), d2 = panel_enc(EN_K1 + 1u);
+        int32_t d3 = panel_enc(EN_K1 + 2u), d4 = panel_enc(EN_K1 + 3u);
+        if (d1 || d2 || d3 || d4)
+            euclid_adjust(song.sel,
+                          d1 ? accel(EN_K1, d1, NSTEP) : 0,
+                          d2 ? accel(EN_K1 + 1u, d2, NSTEP) : 0,
+                          d3,
+                          d4 ? accel(EN_K1 + 3u, d4, NSTEP) : 0);
     }
     enc_drop();
 }
@@ -550,6 +567,11 @@ static void draw_tools(void)
         tl_text_r(234, 108, b, C_INK);
     } else if (tl.arm) {
         md_text(6, 108, &MD_F3, 2, "PASTE SEL: PICK A STEP", C_INK);
+    } else {
+        euclid_sync_len(song.sel);
+        euclid_fmt_summary(song.sel, b, sizeof b);
+        md_text(6, 108, &MD_F3, 2, b, C_INK);
+        tl_text_r(234, 108, "REC:RND HOME:ALL", C_INK);
     }
     cv_blit(0, TL_Y);
     cv_begin_at(240, TL_H2, TL_Y2, C_BG);
