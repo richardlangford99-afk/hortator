@@ -36,28 +36,15 @@ jobs:
           fi
           test -f "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot"
 
-      - name: Build firmware
+      - name: Build .fwsc firmware
         run: |
-          set -o pipefail
           chmod +x ./build.sh
-          ./build.sh | tee build.log
-
-      - name: Collect generated .fwsc firmware
-        run: |
-          mkdir -p out_fw
-          find / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -type f \( -name "*.fwsc" -o -name "*.ufw" \) -exec cp {} out_fw/ \; 2>/dev/null || true
-          if [ -z "$(ls -A out_fw)" ]; then
-            echo "=== build.log ==="
-            cat build.log
-            echo "=== tools/build.py (top 120 lines) ==="
-            head -n 120 tools/build.py
-            exit 1
-          fi
-          ls -lh out_fw/
+          DRUM_PACKAGE=1 ./build.sh
+          ls -lh build/*.fwsc
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: hortator-custom-fwsc
-          path: out_fw/
+          path: build/*.fwsc
           retention-days: 30
