@@ -36,25 +36,25 @@ jobs:
           fi
           test -f "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot"
 
-      - name: Build .fwsc firmware
+      - name: Build firmware
         run: |
           chmod +x ./build.sh
           ./build.sh
 
-      - name: Locate generated .fwsc file
-        id: find_fw
+      - name: Locate generated firmware files
         run: |
-          FW_FILE=$(find . -maxdepth 4 -name "*.fwsc" | head -n 1)
-          if [ -z "$FW_FILE" ]; then
-            echo "No .fwsc file found after build!"
+          mkdir -p out_fw
+          find . "$HOME/fw-AC79_AIoT_SDK" -type f \( -name "*.fwsc" -o -name "*.ufw" \) -print -exec cp {} out_fw/ \;
+          if [ -z "$(ls -A out_fw)" ]; then
+            echo "No .fwsc or .ufw found. Printing tools/build.py to check output path:"
+            cat tools/build.py
             exit 1
           fi
-          echo "fw_path=$FW_FILE" >> "$GITHUB_OUTPUT"
-          echo "Found firmware: $FW_FILE"
+          ls -lh out_fw/
 
-      - name: Upload .fwsc artifact
+      - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: hortator-custom-fwsc
-          path: ${{ steps.find_fw.outputs.fw_path }}
+          path: out_fw/
           retention-days: 30
