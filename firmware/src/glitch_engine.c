@@ -3,7 +3,7 @@
 - and IDM step/lock mutator */
 
 static int tl_has_locks(uint32_t k, uint32_t s);
-static void lock_clear_step(uint32_t k, uint32_t s, uint32_t id);
+static uint32_t lock_clear_step(uint32_t k, uint32_t s, const uint32_t *ids);
 static void tl_lock_in(uint32_t k, uint32_t s, uint32_t id, int32_t v);
 static int song_lock(void);
 static void ui_message(const char *s);
@@ -153,7 +153,7 @@ static void glitch_pre_trigger(track_t *t, int32_t *nt, uint32_t *vel)
         }
     }
 
-    if (gt->slice > 0u && (uint32_t)t->p[P_MODEL] % NMODELS != DM_SMPL) {
+    if (gt->slice > 0u) {
         if ((glitch_rng() & 127u) < gt->slice) {
             int32_t s_dec = 12 + (int32_t)(glitch_rng() % 64u);
             t->p[P_E1] = (int16_t)s_dec;
