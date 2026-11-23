@@ -348,6 +348,7 @@ static __attribute__((noinline)) void acid_step(track_t *t, const step_t *s, con
     t->rat_nt = t->nt;                                 /* the roll's note (rat_due) */
     t->slide_in = s->slide;
     t->rat_n = (uint8_t)(s->rat < 3u ? s->rat + 1u : 4u);
+    glitch_on_step(t, s);
     t->rat_k = 1;
     t->rat_len = len_s;
     acid_gate_set(t, next);
@@ -377,6 +378,7 @@ static void step_fire(track_t *t, uint32_t len_s)
     drum_play(t, t->rat_vel, s->nt);
     t->rat_nt = t->nt;
     t->rat_n = (uint8_t)(s->rat < 3u ? s->rat + 1u : 4u);
+    glitch_on_step(t, s);
     t->rat_k = 1;
     t->rat_len = len_s;
 }
@@ -389,7 +391,12 @@ static void rat_due(track_t *t, uint32_t cur_len)
         int32_t at = t->rat_off + (int32_t)(t->rat_k * t->rat_len / t->rat_n);
         if (at > (int32_t)t->seq_pos || at >= (int32_t)cur_len)
             break;
-        drum_play(t, t->rat_vel, t->rat_nt);
+        {
+            int32_t rnt = t->rat_nt;
+            uint8_t rvel = t->rat_vel;
+            glitch_on_rat(t, &rnt, &rvel);
+            drum_play(t, rvel, rnt);
+        }
         t->rat_k++;
         if (trk_model(t)->gate)
             acid_gate_set(t, seq_next(t));          /* ACID: each hit its gate, the last one held when it slides */
