@@ -150,6 +150,7 @@ static void drum_play(track_t *t, uint32_t vel, int32_t nt)
     const dmodel_t *m = trk_model(t);
     uint32_t i, nv = m->voices < NDV ? m->voices : NDV;
     dvoice_t *v;
+    glitch_pre_trigger(t, &nt, &vel);
     t->nt = (int8_t)clamp(nt, NT_MIN, NT_MAX);
     if (safe_start)
         return;
