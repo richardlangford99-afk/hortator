@@ -41,8 +41,9 @@ typedef struct {
     uint16_t lk[TL_LK];             /* .. step (from its first) << 7 | knob, ascending */
     int8_t lv[TL_LK];
     uint8_t sel, s0, s1;            /* COPY SEL: the selection page up; START, END (steps 0..63) */
-    uint8_t arm;                    /* PASTE SEL: waiting for a step */
+   uint8_t arm;                    /* PASTE SEL: waiting for a step */
     uint8_t full;                   /* a paste found the lock bank full */
+    uint8_t glitch_page;            /* 0 = EUCLID knobs, 1 = GLITCH knobs */
 } tl_t;
 /* ~950 B: the standard build's .bss; the Bluetooth build has no .bss room to spare for it: the RAM-code region's
  * spare (app_ble.ld .ram_bss, after .ram_text's PC-guard window, below 0x01C06000, as the variations' banks and the
@@ -417,10 +418,24 @@ static void tools_panel(uint32_t pressed)
         bank_set((int32_t)ui.bank + 1);
     if ((pressed >> panel.btn[B_OCTDN]) & 1u)
         bank_set((int32_t)ui.bank - 1);
-    if ((pressed >> panel.btn[B_REC]) & 1u)
-        euclid_randomise_selected();
-    if ((pressed >> panel.btn[B_HOME]) & 1u)
-        euclid_randomise_all();
+    if ((pressed >> panel.btn[B_FX]) & 1u) {
+        tl.glitch_page ^= 1u;
+        ui.force = 1;
+    }
+    if ((pressed >> panel.btn[B_REC]) & 1u) {
+        if (tl.glitch_page)
+            glitch_mutate_selected();
+        else
+            euclid_randomise_selected();
+    }
+    if ((pressed >> panel.btn[B_HOME]) & 1u) {
+        if (tl.glitch_page)
+            glitch_mutate_all();
+        else
+            euclid_randomise_all();
+    }
+    if (tl.glitch_page && ((pressed >> panel.btn[B_EDIT]) & 1u))
+        glitch_clear_selected();
     if (tl.sel) {
         if ((s = panel_enc(EN_K1)) != 0) {
             v = clamp((int32_t)tl.s0 + accel(EN_K1, s, NSTEP), 0, NSTEP - 1);
@@ -437,12 +452,20 @@ static void tools_panel(uint32_t pressed)
     } else {
         int32_t d1 = panel_enc(EN_K1), d2 = panel_enc(EN_K1 + 1u);
         int32_t d3 = panel_enc(EN_K1 + 2u), d4 = panel_enc(EN_K1 + 3u);
-        if (d1 || d2 || d3 || d4)
-            euclid_adjust(song.sel,
-                          d1 ? accel(EN_K1, d1, NSTEP) : 0,
-                          d2 ? accel(EN_K1 + 1u, d2, NSTEP) : 0,
-                          d3,
-                          d4 ? accel(EN_K1 + 3u, d4, NSTEP) : 0);
+        if (d1 || d2 || d3 || d4) {
+            if (tl.glitch_page)
+                glitch_adjust(song.sel,
+                              d1 ? accel(EN_K1, d1, 128) : 0,
+                              d2 ? accel(EN_K1 + 1u, d2, 128) : 0,
+                              d3 ? accel(EN_K1 + 2u, d3, 128) : 0,
+                              d4 ? accel(EN_K1 + 3u, d4, 128) : 0);
+            else
+                euclid_adjust(song.sel,
+                              d1 ? accel(EN_K1, d1, NSTEP) : 0,
+                              d2 ? accel(EN_K1 + 1u, d2, NSTEP) : 0,
+                              d3,
+                              d4 ? accel(EN_K1 + 3u, d4, NSTEP) : 0);
+        }
     }
     enc_drop();
 }
@@ -567,11 +590,16 @@ static void draw_tools(void)
         tl_text_r(234, 108, b, C_INK);
     } else if (tl.arm) {
         md_text(6, 108, &MD_F3, 2, "PASTE SEL: PICK A STEP", C_INK);
+    } else if (tl.glitch_page) {
+        glitch_ensure_init();
+        glitch_fmt_summary(song.sel, b, sizeof b);
+        md_text(6, 108, &MD_F3, 2, b, C_INK);
+        tl_text_r(234, 108, "FX:EUC REC:MUT", C_INK);
     } else {
         euclid_sync_len(song.sel);
         euclid_fmt_summary(song.sel, b, sizeof b);
         md_text(6, 108, &MD_F3, 2, b, C_INK);
-        tl_text_r(234, 108, "REC:RND HOME:ALL", C_INK);
+        tl_text_r(234, 108, "FX:GLT REC:RND", C_INK);
     }
     cv_blit(0, TL_Y);
     cv_begin_at(240, TL_H2, TL_Y2, C_BG);
