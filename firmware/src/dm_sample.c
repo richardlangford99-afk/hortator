@@ -753,18 +753,22 @@ static void smpl_trigger(track_t *t, dvoice_t *v)
     const int16_t *p = &t->p[P_E0];
     int32_t o, en = p[7] <= 0 ? 127 : p[7];         /* (END 0: stored before START / END, the whole sample) */
     uint32_t zi = smpl_zone(t, &o), st = (uint32_t)clamp(p[6], 0, 127);
-    if (zi == 0xFFFFu || !smp_zone(zi)->n) {
+if (zi == 0xFFFFu || !smp_zone(zi)->n) {
         dm_end(v);
         return;
     }
-    smp_go(v, zi, o, smpl_chop(t) >= 0 ? p[0] : dm_tune(t), st, (uint32_t)clamp(en, 0, 127));   /* (a chop: TUNE alone) */
-    v->env[0] = ENV1;
-    v->k[0] = dk(p[1]);
-    v->x[0] = 4000 + p[2] * 28767 / 127;        /* tone lp coefficient */
-    smpl_env_init(t, v);
-    smp_loop_init(v, zi, st, t->p[P_SLOOP] == (int16_t)SL_LOOPI ? 1u
-                             : t->p[P_SLOOP] >= 0 && t->p[P_SLOOP] < 3 ? (uint32_t)t->p[P_SLOOP] : 0u);   /* (LOOPI loops
-                                                     * FWD; ONE none) */
+    {
+        uint32_t en_u = (uint32_t)clamp(en, 0, 127);
+        uint32_t lmode = t->p[P_SLOOP] == (int16_t)SL_LOOPI ? 1u
+                       : t->p[P_SLOOP] >= 0 && t->p[P_SLOOP] < 3 ? (uint32_t)t->p[P_SLOOP] : 0u;
+        glitch_smpl_mod(t, &st, &en_u, &lmode);
+        smp_go(v, zi, o, smpl_chop(t) >= 0 ? p[0] : dm_tune(t), st, en_u);
+        v->env[0] = ENV1;
+        v->k[0] = dk(p[1]);
+        v->x[0] = 4000 + p[2] * 28767 / 127;    /* tone lp coefficient */
+        smpl_env_init(t, v);
+        smp_loop_init(v, zi, st, lmode);
+    }
 }
 
 static void smpl_render(track_t *t, dvoice_t *v, int32_t *out, uint32_t n)
